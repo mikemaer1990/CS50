@@ -1,12 +1,10 @@
 // Implements a dictionary's functionality
-
 #include <stdbool.h>
 #include <string.h>
 #include <strings.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <cs50.h>
 #include "dictionary.h"
 
 // Represents a node in a hash table
@@ -52,16 +50,11 @@ unsigned int hash(const char *word)
     // Credit to: Dan Bernstein
     // Name: djb2
     // Link: http://www.cse.yorku.ca/~oz/hash.html
-    // Some modifications credit to Reddit user SocratesSatisfied because I couldn't get the original to work properly
+    // Some modifications made -- added brackets around line 57 - as well as the 'tolower' on the same line
     unsigned long hash = 5381;
-    int c = *word;
-    c = tolower(c);
-    while (*word != 0)
-    {
+    int c;
+    while ((c = tolower(*word++)))
         hash = ((hash << 5) + hash) + c;
-        c = *word++;
-        c = tolower(c);
-    }
     return (hash % N);
 }
 
@@ -71,47 +64,49 @@ bool load(const char *dictionary)
     // initialize word variable
     char word[LENGTH + 1];
     // Open dictionary file
-    FILE *dictionary_pointer = fopen(dictionary, "r");
+    FILE *d = fopen(dictionary, "r");
     // if invalid file
-    if (dictionary_pointer == NULL)
+    if (d == NULL)
     {
         return false;
     }
     // Loop entil end of file
     // Read strings from file one at a time
-    while (fscanf(dictionary_pointer, "%s", word) != EOF)
+    while (fscanf(d, "%s", word) != EOF)
     {
         // create memory for new node
-        node *newNode = malloc(sizeof(node));
+        node *n = malloc(sizeof(node));
         // ensure enough memory
-        if(newNode == NULL)
+        if(n == NULL)
         {
             // exit if not enough memory
             return false;
         }
         // copy the word into your new node
-        strcpy(newNode->word, word);
+        strcpy(n->word, word);
+        // set next to NULL
+        n->next = NULL;
         // Hash that word to obtain a hash value
         int index = hash(word);
         // if first item at index
         if (table[index] == NULL)
         {
             // point 'head' at newnode
-            table[index] = newNode;
+            table[index] = n;
         }
         // if not the first item
         else
         {
             // point newnode at first item in the list
-            newNode->next = table[index];
+            n->next = table[index];
             // point 'head' at newnode
-            table[index] = newNode;
+            table[index] = n;
         }
         // increment wordcount
         wordCount++;
     }
     // close file and return true
-    fclose(dictionary_pointer);
+    fclose(d);
     return true;
 }
 
@@ -128,9 +123,12 @@ bool unload(void)
     // loop through each linked list in table
     for (int i = 0; i < N; i ++)
     {
+        // create head variable
         node *head = table[i];
+        // same thing for temp
+        node *temp = head;
+        // create cursor and point it to the head
         node *cursor = head;
-        node *temp = cursor;
         // loop until cursor == NULL - meaning end of list
         while (cursor != NULL)
         {
