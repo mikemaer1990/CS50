@@ -1,7 +1,12 @@
 // Implements a dictionary's functionality
 
 #include <stdbool.h>
-
+#include <string.h>
+#include <strings.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <cs50.h>
 #include "dictionary.h"
 
 // Represents a node in a hash table
@@ -13,142 +18,129 @@ typedef struct node
 node;
 
 // Number of buckets in hash table
-// MAY NEED TO INCREASE THIS -- 5381?
-const unsigned int N = 25;
-
+const unsigned int N = 5381;
+// variable to store number of words globally
+unsigned int wordCount = 0;
 // Hash table
 node *table[N];
 
 // Returns true if word is in dictionary else false
 bool check(const char *word)
 {
-    // TODO
-    // case insensitive
-    // PSEUDOCODE
     // Hash the word to obtain a hash value
-        // poop = hash(word);
-    // Access linked list at that hash value
-    // check that list looking for word
-        // use strcasecmp(word)
-        // to traverse list
-            // set up variable CURSOR which points to the first element in the list
-            // check if first element is the same as the word you are looking for?
-            // if not then
-                // cursor = cursor->next
-                // if cursor OR cursor->next == NULL
-                // word not found - invalid word
-                // return false
-            // if found
-                // return true - word found
-
+    int index = hash(word);
+    // temprorary cursor pointer variable
+    node *cursor = table[index];
+    // loop over each node until at the end of the list
+    while (cursor != NULL)
+    {
+        // compare the current word cursor is pointing to to the input word
+        if (strcasecmp(cursor->word, word) == 0)
+        {
+            return true;
+        }
+        // if no match found - go to next item in list
+        cursor = cursor->next;
+    }
+    // return false if word is not found
     return false;
 }
 
 // Hashes word to a number
 unsigned int hash(const char *word)
 {
-    // credit to - Dan Bernstein / djb2
-    // unsigned long hash(unsigned char *str)
-    // {
-    //     unsigned long hash = 5381;
-    //     int c;
-    //     while (c = *str++)
-    //     {
-    //         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    //     }
-    //     return hash;
-    // }
-
-    // PSEUDOCODE
-    // input = word (alphabetical chars and maybe apostrophes)
-    // output = index number between 0 and N - 1 INCLUSIVE
-    // change N
-        //  the larger N is the more buckets
-    // if your function ends up with a number greater than N
-        // value % N
-        // will return a value in the appropriate range
-
-    return 0;
+    // Credit to: Dan Bernstein
+    // Name: djb2
+    // Link: http://www.cse.yorku.ca/~oz/hash.html
+    // Some modifications credit to Reddit user SocratesSatisfied because I couldn't get the original to work properly
+    unsigned long hash = 5381;
+    int c = *word;
+    c = tolower(c);
+    while (*word != 0)
+    {
+        hash = ((hash << 5) + hash) + c;
+        c = *word++;
+        c = tolower(c);
+    }
+    return (hash % N);
 }
 
 // Loads dictionary into memory, returning true if successful else false
 bool load(const char *dictionary)
 {
-    // PSEUDOCODE
-    int index = 0;
-    unsigned char *word;
+    // initialize word variable
+    char word[LENGTH + 1];
     // Open dictionary file
-    FILE *d = fopen(dictionary, "r");
+    FILE *dictionary_pointer = fopen(dictionary, "r");
     // if invalid file
-    if (d == NULL)
+    if (dictionary_pointer == NULL)
     {
-        // error message and return 1
-        printf("Invalid Dictionary File\n");
-        return 1;
+        return false;
     }
-    // else
-    // Loop entil end of file\
+    // Loop entil end of file
     // Read strings from file one at a time
-    WHILE (fscanf(d, "%s", word) != EOF)
+    while (fscanf(dictionary_pointer, "%s", word) != EOF)
     {
-        // Not sure if this will work - but is this to create 'head'
-        // int head = table[index]
         // create memory for new node
-        node *n = malloc(sizeof(node));
+        node *newNode = malloc(sizeof(node));
         // ensure enough memory
-        if(n == NULL)
+        if(newNode == NULL)
         {
-            // print error if not enough memory
-            printf("Error\n")
-            return 1
+            // exit if not enough memory
+            return false;
         }
         // copy the word into your new node
-        strcpy(n->word, word);
-        // n->next = NULL ?? not sure why i put this here..
+        strcpy(newNode->word, word);
         // Hash that word to obtain a hash value
-        index = hash(word);
+        int index = hash(word);
         // if first item at index
-        if (table[index]->next == NULL)
+        if (table[index] == NULL)
         {
-            // point 'head' at n
-            table[index]->next = n;
-            // point n at nothing
-            n->next = NULL;
+            // point 'head' at newnode
+            table[index] = newNode;
         }
         // if not the first item
         else
         {
-            // point n at first item in the list
-            n->next = table[index][0];
-            // point 'head' at n
-            table[index]->next = n;
+            // point newnode at first item in the list
+            newNode->next = table[index];
+            // point 'head' at newnode
+            table[index] = newNode;
         }
+        // increment wordcount
+        wordCount++;
     }
-
-    // TODO
-    return false;
+    // close file and return true
+    fclose(dictionary_pointer);
+    return true;
 }
 
 // Returns number of words in dictionary if loaded else 0 if not yet loaded
 unsigned int size(void)
 {
-    // keep track of total # of words as loading them in a global varibal and return that
-    return 0;
+    // self explanatory
+    return wordCount;
 }
 
 // Unloads dictionary from memory, returning true if successful else false
 bool unload(void)
 {
-    // anytime you use malloc
-    // you must use free();
-    // free each linked list in your hashtable
-    // loop over each item
-    // HOW to free a linked list
-        // create a pointer cursor that points to the first item in list
-        // create a temp variable that also points to the first item
-        // loop until cursor = NULL
-            // cursor = cursor->next
-            // free(temp)
-            // temp = cursor
-    return false;
+    // loop through each linked list in table
+    for (int i = 0; i < N; i ++)
+    {
+        node *head = table[i];
+        node *cursor = head;
+        node *temp = cursor;
+        // loop until cursor == NULL - meaning end of list
+        while (cursor != NULL)
+        {
+            // point cursor to the next item
+            cursor = cursor->next;
+            // free the memory of tmps pointee
+            free(temp);
+            // point tmp to cursor
+            temp = cursor;
+        }
+    }
+    return true;
 }
